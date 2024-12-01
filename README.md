@@ -1,6 +1,6 @@
 # Audio Quality Analyzer
 
-A Python tool for analyzing audio quality using PESQ (Perceptual Evaluation of Speech Quality) metrics. This tool supports various audio formats including WebM, MP3, WAV, and more.
+A Python library and command-line tool for analyzing audio quality using PESQ (Perceptual Evaluation of Speech Quality) metrics. This tool supports various audio formats including WebM, MP3, WAV, and more.
 
 ## Features
 
@@ -9,6 +9,20 @@ A Python tool for analyzing audio quality using PESQ (Perceptual Evaluation of S
 - Signal-to-Noise Ratio (SNR) measurement
 - Support for multiple audio formats (WebM, WAV, MP3, etc.)
 - Detailed logging of the analysis process
+- Support for both audio files and video files with audio streams
+
+## Project Structure
+
+```
+audio-analyzer/
+├── audio_analyzer/          # Main package directory
+│   ├── __init__.py         # Package initialization
+│   ├── analyzer.py         # Core analysis functionality
+│   └── utils.py            # Utility functions
+├── analyze_audio.py        # Command-line interface
+├── requirements.txt        # Python dependencies
+└── README.md              # This file
+```
 
 ## Requirements
 
@@ -63,17 +77,49 @@ pip install -r requirements.txt
 
 ## Usage
 
+### As a Command-Line Tool
+
+Basic usage:
 ```bash
-python3 calculate_sti.py path/to/your/audio.webm --log-file analysis.log
+python3 analyze_audio.py path/to/your/audio.webm
 ```
 
-## Output
+With logging to file:
+```bash
+python3 analyze_audio.py path/to/your/audio.webm --log-file analysis.log
+```
 
-The tool provides:
+### As a Python Library
+
+```python
+from audio_analyzer import AudioAnalyzer
+
+# Create analyzer instance
+analyzer = AudioAnalyzer()
+
+# Analyze audio file
+results = analyzer.analyze_audio("path/to/audio.webm")
+
+# Process results
+if results:
+    print(f"PESQ Score: {results['pesq_score']}")
+    print(f"Quality Category: {results['quality_category']}")
+    print(f"SNR (dB): {results['snr_db']}")
+    print(f"Sample Rate: {results['sample_rate']}")
+```
+
+## Output Format
+
+The analysis provides the following metrics:
 - PESQ score (ranging from -0.5 to 4.5)
-- Quality category (Poor to Outstanding)
+- Quality category:
+  - Poor Quality (< 1.0)
+  - Fair Quality (1.0 - 2.0)
+  - Good Quality (2.0 - 3.0)
+  - Excellent Quality (3.0 - 4.0)
+  - Outstanding Quality (> 4.0)
 - Signal-to-Noise Ratio (SNR) in dB
-- Sample rate information
+- Sample rate in Hz
 
 ## Troubleshooting
 
@@ -89,7 +135,19 @@ The tool provides:
 
 3. **Permission denied when creating log file**
    - Make sure you have write permissions in the directory
-   - Try running without the log file first: `python3 calculate_sti.py path/to/your/audio.webm`
+   - Try running without the log file first
+
+4. **Unsupported audio format**
+   - Check if the format is supported by ffmpeg: `ffmpeg -formats`
+   - Ensure the file is not corrupted
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
