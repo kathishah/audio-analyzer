@@ -21,6 +21,12 @@ audio-analyzer/
 │   └── utils.py            # Utility functions
 ├── analyze_audio.py        # Command-line interface
 ├── requirements.txt        # Python dependencies
+├── tests/                  # Test directory
+│   ├── __init__.py
+│   ├── conftest.py         # Test configuration and fixtures
+│   ├── test_analyzer.py    # Tests for analyzer module
+│   ├── test_utils.py       # Tests for utilities
+│   └── resources/          # Test resource files
 └── README.md              # This file
 ```
 
@@ -120,6 +126,47 @@ The analysis provides the following metrics:
   - Outstanding Quality (> 4.0)
 - Signal-to-Noise Ratio (SNR) in dB
 - Sample rate in Hz
+
+## Testing
+
+The project uses pytest for testing. To run the tests:
+
+1. Install test dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Run tests:
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=audio_analyzer
+
+# Run tests verbosely
+pytest -v
+
+# Run specific test file
+pytest tests/test_analyzer.py
+```
+
+### Test Structure
+
+```
+tests/
+├── __init__.py
+├── conftest.py           # Test configuration and fixtures
+├── test_analyzer.py      # Tests for analyzer module
+├── test_utils.py         # Tests for utilities
+└── resources/            # Test resource files
+```
+
+The test suite includes:
+- Unit tests for all core functionality
+- Integration tests for audio processing
+- Mock tests for external dependencies
+- Fixtures for common test scenarios
 
 ## Troubleshooting
 

@@ -160,13 +160,22 @@ class AudioAnalyzer:
             logger.info("Calculating Signal-to-Noise Ratio...")
             noise_power = np.mean(noise ** 2)
             signal_power = np.mean(audio ** 2)
-            snr = 10 * np.log10(signal_power / noise_power)
+            
+            # Handle division by zero for SNR calculation
+            if noise_power == 0:
+                if signal_power == 0:
+                    snr = 0.0  # Both signal and noise are zero
+                else:
+                    snr = float('inf')  # No noise, finite signal
+            else:
+                snr = 10 * np.log10(signal_power / noise_power)
+            
             logger.info(f"SNR calculated: {snr:.2f} dB")
             
             results = {
                 'pesq_score': round(pesq_score, 2),
                 'quality_category': self.categorize_pesq(pesq_score),
-                'snr_db': round(snr, 2),
+                'snr_db': float('inf') if np.isinf(snr) else round(snr, 2),
                 'sample_rate': sample_rate
             }
             
