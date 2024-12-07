@@ -38,7 +38,7 @@ def main():
             print("\nAudio Quality Analysis Results:")
             print("-" * 30)
             for key, value in results.items():
-                print(f"{key.replace('_', ' ').title()}: {value}")
+                print(f"{key}: {value}")
             logger.info("Analysis results displayed successfully")
             return 0
         else:
