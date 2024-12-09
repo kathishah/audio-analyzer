@@ -72,7 +72,7 @@ class AudioAnalyzer:
                     file_type = 'audio/webm'
         
         # Check if file is an audio file or video file with audio
-        if not (file_type.startswith('audio/') or file_type == 'video/webm'):
+        if not (file_type.startswith('audio/') or file_type == 'video/webm' or file_type == 'video/mp4'):
             raise ValueError(f"File is not an audio file or video with audio. Detected type: {file_type}")
         
         try:
