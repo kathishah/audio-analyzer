@@ -11,6 +11,7 @@ import magic
 from pydub import AudioSegment
 from typing import Dict, Union, Optional
 import os
+import tempfile
 
 from .utils import get_media_info, cleanup_temp_file, create_temp_wav
 
@@ -59,6 +60,9 @@ class AudioAnalyzer:
         # Check if file is already a WAV file
         if file_type == 'audio/x-wav':
             return input_file
+
+        # Create a temporary file path for the WAV conversion
+        temp_wav_path = create_temp_wav()
         
         # For WebM files, check actual content
         if file_type == 'video/webm':
@@ -77,7 +81,6 @@ class AudioAnalyzer:
         
         try:
             logger.info(f"Converting {file_type} file to WAV format...")
-            temp_wav_path = create_temp_wav()
             
             # Convert to WAV using the detected format
             format_map = {
@@ -102,7 +105,7 @@ class AudioAnalyzer:
             
         except Exception as e:
             logger.error(f"Error converting file: {str(e)}")
-            if 'temp_wav_path' in locals():
+            if os.path.exists(temp_wav_path):
                 cleanup_temp_file(temp_wav_path)
             raise
 
