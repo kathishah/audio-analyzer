@@ -1,0 +1,35 @@
+# Version control
+.git
+.gitignore
+
+# Virtual environment
+venv
+.env
+*.env
+
+# Python cache files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Testing and coverage
+.pytest_cache
+.coverage
+htmlcov
+tests
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Miscellaneous
+.DS_Store
+.github
+*.log
+
+# Docker
+Dockerfile
+docker-compose.yml

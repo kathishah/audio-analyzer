@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - PORT=8000
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    
+  # Optional: Add database or other services here if needed
+  # For example:
+  # database:
+  #   image: postgres:13
+  #   environment:
+  #     POSTGRES_DB: audioanalyzerdb
+  #     POSTGRES_PASSWORD: yourpassword
