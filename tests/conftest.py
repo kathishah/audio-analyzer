@@ -53,3 +53,14 @@ def mock_media_info():
 def test_files_dir():
     """Fixture to provide the path to test resource files"""
     return os.path.join(os.path.dirname(__file__), 'resources')
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--api-url",
+        default="https://audio-analyzer-api-af6843ebf910.herokuapp.com",
+        help="API URL to test against"
+    )
+
+@pytest.fixture
+def api_url(request):
+    return request.config.getoption("--api-url")
