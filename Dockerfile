@@ -36,5 +36,5 @@ EXPOSE 8000
 # Define environment variable to ensure Python output is sent directly to terminal
 ENV PYTHONUNBUFFERED=1
 
-# Run the application using gunicorn
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT} --workers 1 main:app"]
+# Run the application using uvicorn for asgi server
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
