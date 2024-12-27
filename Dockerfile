@@ -37,4 +37,4 @@ EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
 
 # Run the application using gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "main:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT} --workers 1 main:app"]
