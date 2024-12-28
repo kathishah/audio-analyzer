@@ -84,8 +84,8 @@ def test_analyze_audio_valid_file(audio_analyzer, sample_wav_file, mocker):
 
 def test_analyze_audio_invalid_file(audio_analyzer):
     """Test analysis of an invalid file"""
-    results = audio_analyzer.analyze_audio('nonexistent_file.wav')
-    assert results is None
+    with pytest.raises(FileNotFoundError):
+        audio_analyzer.analyze_audio('nonexistent_file.wav')
 
 def test_analyze_audio_stereo_conversion(audio_analyzer, mocker):
     """Test stereo to mono conversion during analysis"""
@@ -163,8 +163,8 @@ def test_analyze_audio_pesq_error(audio_analyzer, mocker):
     # Mock PESQ to raise an error
     mocker.patch('audio_analyzer.analyzer.pesq', side_effect=ValueError("PESQ calculation failed"))
     
-    results = audio_analyzer.analyze_audio('test.wav')
-    assert results is None
+    with pytest.raises(ValueError) as exc_info:
+        audio_analyzer.analyze_audio('test.wav')
 
 def test_analyze_audio_zero_signal(audio_analyzer, mocker):
     """Test handling of zero signal power"""
