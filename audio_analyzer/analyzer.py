@@ -78,7 +78,7 @@ class AudioAnalyzer:
         # Check if file is an audio file or video file with audio
         if not (file_type.startswith('audio/') or file_type == 'video/webm' or file_type == 'video/mp4'):
             raise ValueError(f"File is not an audio file or video with audio. Detected type: {file_type}")
-        
+                
         try:
             logger.info(f"Converting {file_type} file to WAV format...")
             
@@ -187,7 +187,7 @@ class AudioAnalyzer:
 
         except Exception as e:
             logger.error(f"Error processing file: {str(e)}")
-            return None
+            raise e
         finally:
             # Clean up temporary WAV file if it was created
             if wav_file and wav_file != input_file:

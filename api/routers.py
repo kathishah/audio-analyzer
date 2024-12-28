@@ -64,7 +64,7 @@ async def analyze_audio(file: UploadFile = File(...)) -> Dict[str, Union[float, 
         logger.error(f"Error analyzing file: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing file: {str(e)}"
+            detail=f"{str(e)}"
         )
     finally:
         # Cleanup temporary file
