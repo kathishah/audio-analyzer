@@ -64,50 +64,19 @@ class AudioAnalyzer:
         # Create a temporary file path for the WAV conversion
         temp_wav_path = create_temp_wav()
         
-        # For WebM files, check actual content
-        if file_type == 'video/webm':
-            media_info = get_media_info(input_file)
-            if media_info and 'streams' in media_info:
-                # Check if file has video streams
-                has_video = any(stream['codec_type'] == 'video' 
-                              for stream in media_info['streams'])
-                if not has_video:
-                    logger.info("WebM file contains only audio streams")
-                    file_type = 'audio/webm'
-        
-        # Check if file is an audio file or video file with audio
-        if not (file_type.startswith('audio/') or file_type == 'video/webm' or file_type == 'video/mp4'):
-            raise ValueError(f"File is not an audio file or video with audio. Detected type: {file_type}")
-                
         try:
             logger.info(f"Converting {file_type} file to WAV format...")
-            
-            # Convert to WAV using the detected format
-            format_map = {
-                'audio/webm': 'webm',
-                'video/webm': 'webm',
-                'audio/mpeg': 'mp3',
-                'audio/ogg': 'ogg',
-                'audio/x-m4a': 'm4a',
-                'audio/aac': 'aac',
-                'audio/flac': 'flac',
-                'video/mp4': 'mp4',
-                'video/x-m4v': 'm4v'
-            }
-            
-            detected_format = format_map.get(file_type, file_type.split('/')[-1])
-            logger.info(f"Using format '{detected_format}' for conversion")
-            
-            audio = AudioSegment.from_file(input_file, format=detected_format)
+                        
+            audio = AudioSegment.from_file(input_file)
             audio.export(temp_wav_path, format="wav")
-            logger.info(f"Converted {detected_format} to WAV: {temp_wav_path}")
+            logger.info(f"Converted {file_type} to WAV: {temp_wav_path}")
             return temp_wav_path
             
         except Exception as e:
             logger.error(f"Error converting file: {str(e)}")
             if os.path.exists(temp_wav_path):
                 cleanup_temp_file(temp_wav_path)
-            raise
+            raise e
 
     def analyze_audio(self, input_file: str) -> Optional[Dict[str, Union[float, str, int]]]:
         """
