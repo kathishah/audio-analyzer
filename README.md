@@ -25,6 +25,8 @@ audio-analyzer/
 │   ├── __init__.py
 │   ├── conftest.py         # Test configuration and fixtures
 │   ├── test_analyzer.py    # Tests for analyzer module
+│   ├── test_deployment.py  # Tests to be run after the docker based deployment
+│   ├── test_performance.py # Performance (api latency) tests to be run after the docker based deployment
 │   ├── test_utils.py       # Tests for utilities
 │   └── resources/          # Test resource files
 └── README.md              # This file
@@ -158,6 +160,8 @@ tests/
 ├── __init__.py
 ├── conftest.py           # Test configuration and fixtures
 ├── test_analyzer.py      # Tests for analyzer module
+├── test_deployment.py    # Tests to be run after the docker based deployment
+├── test_performance.py   # Performance (api latency) tests to be run after the docker based deployment
 ├── test_utils.py         # Tests for utilities
 └── resources/            # Test resource files
 ```
