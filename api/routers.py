@@ -7,15 +7,34 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import Dict, Union
 import tempfile
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 from audio_analyzer import AudioAnalyzer
 from .models import AudioAnalysisResponse, ErrorResponse
+from services.s3_service import upload_file_to_s3
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ThreadPoolExecutor for async background tasks
+executor = ThreadPoolExecutor(max_workers=2)
+
+def save_to_s3_in_background(temp_file_path: str, content_type: str):
+    """
+    Save file to S3 in the background.
+
+    Args:
+        temp_file_path: Path to the temporary file.
+        content_type: MIME type of the file.
+    """
+    try:
+        s3_url = upload_file_to_s3(temp_file_path, content_type)
+        logger.info(f"File uploaded to S3: {s3_url}")
+    except Exception as e:
+        logger.error(f"Failed to upload file to S3: {str(e)}")
+
+
 
 @router.post("/analyze", 
             response_model=AudioAnalysisResponse,
@@ -48,6 +67,10 @@ async def analyze_audio(file: UploadFile = File(...)) -> Dict[str, Union[float, 
         temp_file.write(await file.read())
         temp_file.close()
         
+        # Submit S3 upload task to the thread pool
+        logger.info(f"Submitting file to S3 in background: {temp_file.name}")
+        executor.submit(save_to_s3_in_background, temp_file.name, file.content_type)
+
         # Analyze audio
         analyzer = AudioAnalyzer()
         results = analyzer.analyze_audio(temp_file.name)

@@ -1,10 +1,30 @@
 """
 FastAPI application for audio analysis
 """
+from dotenv import load_dotenv, find_dotenv
+
+# Load environment variables from .env file
+# Attempt to load .env file
+dotenv_path = find_dotenv()
+load_dotenv(dotenv_path)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import router
+from logging_config import setup_logging
+import logging
+import os
+
+# Initialize logging
+setup_logging()
+logger = logging.getLogger(__name__)
+
+# Check if variables are being loaded
+if dotenv_path:
+    logger.info(f".env file loaded from: {dotenv_path}")
+else:
+    logger.error("No .env file found.")
+logger.info(f"COGNITO_IDENTITY_POOL_ID: {os.getenv('COGNITO_IDENTITY_POOL_ID')}")
 
 # Create FastAPI app
 app = FastAPI(

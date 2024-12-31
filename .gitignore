@@ -21,6 +21,7 @@ var/
 *.egg
 .coverage
 coverage.xml
+.env
 
 # Virtual Environment
 venv/
