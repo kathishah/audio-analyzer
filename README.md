@@ -19,16 +19,29 @@ audio-analyzer/
 │   ├── __init__.py         # Package initialization
 │   ├── analyzer.py         # Core analysis functionality
 │   └── utils.py            # Utility functions
-├── analyze_audio.py        # Command-line interface
-├── requirements.txt        # Python dependencies
+├── api/                    # API related files
+│   ├── models.py           # API models
+│   └── routers.py          # API routers
+├── services/               # Service layer
+│   └── s3_service.py       # S3 integration
 ├── tests/                  # Test directory
 │   ├── __init__.py
 │   ├── conftest.py         # Test configuration and fixtures
 │   ├── test_analyzer.py    # Tests for analyzer module
-│   ├── test_deployment.py  # Tests to be run after the docker based deployment
-│   ├── test_performance.py # Performance (api latency) tests to be run after the docker based deployment
 │   ├── test_utils.py       # Tests for utilities
 │   └── resources/          # Test resource files
+
+
+Deployment related files
+│   ├── Dockerfile          # Docker configuration
+│   ├── docker-compose.yml  # Docker Compose configuration
+│   ├── Procfile            # Process file for deployment
+│   └── verify_deployment.sh # Deployment verification script
+├── tests/                  # Test directory
+│   ├── test_deployment.py  # Tests to be run after the docker based deployment
+│   ├── test_performance.py # Performance (api latency) tests to be run after the docker based deployment
+├── analyze_audio.py        # Command-line interface for running on local
+├── requirements.txt        # Python dependencies
 └── README.md              # This file
 ```
 
@@ -43,8 +56,9 @@ Install using Homebrew:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install required packages
-brew install ffmpeg    # Required for audio conversion
-brew install libmagic  # Required for file type detection
+brew install ffmpeg      # Required for audio conversion
+brew install libmagic    # Required for file type detection
+brew cask install docker # Required for containerized deployment
 ```
 
 #### Linux (Ubuntu/Debian)
@@ -52,17 +66,19 @@ brew install libmagic  # Required for file type detection
 sudo apt-get update
 sudo apt-get install ffmpeg
 sudo apt-get install libmagic1
-```
 
-### Python Dependencies
-- Python 3.x
-- See requirements.txt for Python package dependencies
+#### Docker
+Docker is required for containerized deployment.
+
+- **Linux**:
+  - Follow the instructions on [Docker's official website](https://docs.docker.com/engine/install/ubuntu/).
+```
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/YOUR_USERNAME/audio-analyzer.git
+git clone https://github.com/kathishah/audio-analyzer.git
 cd audio-analyzer
 ```
 
@@ -82,7 +98,17 @@ source venv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
+4. Environment: ensure the following environment variables are set in a .env file in the root directory of the project.
 
+- `AWS_REGION`: The AWS region where your S3 bucket is located (e.g., `us-west-1`).
+- `S3_BUCKET_NAME`: The name of your S3 bucket (e.g., `crispvoice-audio-recordings`).
+- `COGNITO_IDENTITY_POOL_ID`: The Cognito Identity Pool ID used to fetch temporary AWS credentials.
+
+
+5. Build the application:
+```bash
+docker-compose up --build -d
+```
 ## Usage
 
 ### As a Command-Line Tool
@@ -140,17 +166,17 @@ pip install -r requirements.txt
 
 2. Run tests:
 ```bash
-# Run all tests
+# Run all tests. EXPECTS THAT Docker is running.
 pytest
 
-# Run tests with coverage report
-pytest --cov=audio_analyzer
+# Run all tests with coverage report verbosely. EXPECTS THAT Docker is running.
+pytest --api-url="http://localhost:8000" --cov=audio_analyzer -vvvv 
 
-# Run tests verbosely
-pytest -v
+# Run pre-deployment tests. No DOCKER expected
+pytest tests/test_analyzer.py tests/test_utils.py --cov=audio_analyzer -vvvv
 
-# Run specific test file
-pytest tests/test_analyzer.py
+# Run post-deployment tests. EXPECTS THAT Docker is running. 
+pytest tests/test_deployment.py tests/test_performance.py --api-url="http://localhost:8000" --cov=audio_analyzer -vvvv
 ```
 
 ### Test Structure
@@ -171,6 +197,16 @@ The test suite includes:
 - Integration tests for audio processing
 - Mock tests for external dependencies
 - Fixtures for common test scenarios
+
+### Environment Variables for S3 Upload Test
+
+To run the S3 upload test in `test_deployment.py`, ensure the following environment variables are set:
+
+- `AWS_REGION`: The AWS region where your S3 bucket is located (e.g., `us-west-1`).
+- `S3_BUCKET_NAME`: The name of your S3 bucket (e.g., `crispvoice-audio-recordings`).
+- `COGNITO_IDENTITY_POOL_ID`: The Cognito Identity Pool ID used to fetch temporary AWS credentials.
+
+These environment variables are necessary for authenticating and interacting with AWS services during the test.
 
 ## Troubleshooting
 

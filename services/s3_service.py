@@ -50,6 +50,8 @@ s3_client = boto3.client(
     aws_session_token=cognito_credentials['SessionToken']
 )
 
+__all__ = ['s3_client', 'upload_file_to_s3']
+
 def generate_file_name() -> str:
     """
     Generate a unique file name based on the current timestamp.

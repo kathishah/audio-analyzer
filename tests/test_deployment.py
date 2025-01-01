@@ -2,12 +2,18 @@
 Deployment verification tests
 """
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 import os
 import pytest
 import requests
 import tempfile
 import numpy as np
 import soundfile as sf
+from services.s3_service import upload_file_to_s3, s3_client
 
 def test_health_check(api_url):
     """Test health check endpoint"""
@@ -90,3 +96,32 @@ def test_invalid_file(api_url):
             # Cleanup
             if os.path.exists(temp_file.name):
                 os.unlink(temp_file.name)
+
+def test_upload_file_to_s3():
+    # Arrange
+    file_path = 'test_file.txt'
+    content_type = 'text/plain'
+    expected_bucket = os.getenv('S3_BUCKET_NAME', 'crispvoice-audio-recordings')
+
+    # Create a test file
+    with open(file_path, 'w') as f:
+        f.write('This is a test file.')
+
+    # Act
+    result_url = upload_file_to_s3(file_path, content_type)
+
+    # Assert the result URL
+    expected_url_prefix = f"https://{expected_bucket}.s3.{os.getenv('AWS_REGION', 'us-west-1')}.amazonaws.com/"
+    assert result_url.startswith(expected_url_prefix), f"Unexpected result URL: {result_url}"
+
+    # Verify the file is accessible in S3
+    file_name = result_url.split('/')[-1]
+    response = s3_client.list_objects_v2(Bucket=expected_bucket, Prefix=file_name)
+    file_exists = 'Contents' in response and any(obj['Key'] == file_name for obj in response['Contents'])
+
+    assert file_exists, "File was not uploaded to S3."
+
+    # Cleanup
+    file_name = result_url.split('/')[-1]
+    s3_client.delete_object(Bucket=expected_bucket, Key=file_name)
+    os.remove(file_path)
