@@ -8,7 +8,9 @@ import uuid
 from sqlalchemy import Column, String, JSON, DateTime, Text, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
-from .database import Base
+from services.db_service import db_service
+
+Base = db_service.Base
 
 # Pydantic models for API
 class ErrorResponse(BaseModel):

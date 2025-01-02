@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import router
 from logging_config import setup_logging
-from api.init_db import init_db
+from services.db_service import init_database
 import logging
 import os
 
@@ -35,7 +35,7 @@ app = FastAPI(
 )
 
 # Initialize database
-init_db()
+init_database()
 
 # Add CORS middleware
 app.add_middleware(

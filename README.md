@@ -23,7 +23,8 @@ audio-analyzer/
 │   ├── models.py           # API models
 │   └── routers.py          # API routers
 ├── services/               # Service layer
-│   └── s3_service.py       # S3 integration
+│   ├── s3_service.py       # S3 integration
+│   └── db_service.py       # Postgres db integration
 ├── tests/                  # Test directory
 │   ├── __init__.py
 │   ├── conftest.py         # Test configuration and fixtures
@@ -66,13 +67,13 @@ brew cask install docker # Required for containerized deployment
 sudo apt-get update
 sudo apt-get install ffmpeg
 sudo apt-get install libmagic1
+```
 
 #### Docker
 Docker is required for containerized deployment.
 
 - **Linux**:
   - Follow the instructions on [Docker's official website](https://docs.docker.com/engine/install/ubuntu/).
-```
 
 ## Installation
 
@@ -109,6 +110,61 @@ pip install -r requirements.txt
 ```bash
 docker-compose up --build -d
 ```
+## Database Setup
+
+The application uses PostgreSQL for data storage. The database is automatically set up when you run the application using Docker Compose.
+
+### Database Schema
+
+The application uses a `recording_sessions` table with the following structure:
+- `session_id`: UUID (Primary Key)
+- `device_name`: String
+- `ip_address`: String
+- `audio_format`: String
+- `microphone_details`: String (JSON serialized)
+- `speaker_details`: String (JSON serialized)
+- `s3_location`: String
+- `analysis_output`: JSON
+- `analysis_score`: Numeric(5,2)
+- `created_at`: DateTime
+- `updated_at`: DateTime
+
+### Development Setup
+
+1. Start the application with Docker Compose:
+```bash
+docker-compose up --build
+```
+
+2. Run database migrations:
+```bash
+docker-compose exec web alembic upgrade head
+```
+
+3. Create test database (required for running tests):
+```bash
+docker-compose exec db psql -U postgres -c "CREATE DATABASE test_audioanalyzer;"
+```
+
+### Database Migrations
+
+To create a new migration after modifying the database schema:
+
+1. Create a new migration:
+```bash
+docker-compose exec web alembic revision -m "description_of_changes"
+```
+
+2. Apply the migration:
+```bash
+docker-compose exec web alembic upgrade head
+```
+
+3. Rollback a migration if needed:
+```bash
+docker-compose exec web alembic downgrade -1
+```
+
 ## Usage
 
 ### As a Command-Line Tool
@@ -157,56 +213,52 @@ The analysis provides the following metrics:
 
 ## Testing
 
-The project uses pytest for testing. To run the tests:
+The project includes various test suites:
 
-1. Install test dependencies:
+### Unit Tests
+- `tests/test_analyzer.py`: Tests for core audio analysis functionality
+- `tests/test_utils.py`: Tests for utility functions
+- `tests/test_database.py`: Tests for database operations
+
+### Integration Tests
+- `tests/test_deployment.py`: Tests for deployed application
+- `tests/test_performance.py`: API performance tests
+
+### Running Tests
+
+1. Ensure the application is running:
 ```bash
-pip install -r requirements.txt
+docker-compose up -d
 ```
 
-2. Run tests:
+2. Run all tests:
 ```bash
-# Run all tests. EXPECTS THAT Docker is running.
-pytest
+# Run all tests
+docker-compose exec web pytest -v
 
-# Run all tests with coverage report verbosely. EXPECTS THAT Docker is running.
-pytest --api-url="http://localhost:8000" --cov=audio_analyzer -vvvv 
+# Run specific test file
+docker-compose exec web pytest tests/test_database.py -v
 
-# Run pre-deployment tests. No DOCKER expected
-pytest tests/test_analyzer.py tests/test_utils.py --cov=audio_analyzer -vvvv
+# Run tests with coverage
+docker-compose exec web pytest --cov=audio_analyzer -v
 
-# Run post-deployment tests. EXPECTS THAT Docker is running. 
-pytest tests/test_deployment.py tests/test_performance.py --api-url="http://localhost:8000" --cov=audio_analyzer -vvvv
+# Run tests with specific markers
+docker-compose exec web pytest -m "not s3" -v  # Skip S3-related tests
 ```
 
-### Test Structure
+### Test Environment
 
+The test suite uses:
+- A separate test database (`test_audioanalyzer`)
+- Mock S3 credentials for S3-related tests
+- Temporary files that are cleaned up after tests
+
+### Continuous Integration
+
+The CI pipeline runs all tests except those marked with the `s3` marker, as they require AWS credentials. To skip S3 tests locally, use:
+```bash
+docker-compose exec web pytest -m "not s3" -v
 ```
-tests/
-├── __init__.py
-├── conftest.py           # Test configuration and fixtures
-├── test_analyzer.py      # Tests for analyzer module
-├── test_deployment.py    # Tests to be run after the docker based deployment
-├── test_performance.py   # Performance (api latency) tests to be run after the docker based deployment
-├── test_utils.py         # Tests for utilities
-└── resources/            # Test resource files
-```
-
-The test suite includes:
-- Unit tests for all core functionality
-- Integration tests for audio processing
-- Mock tests for external dependencies
-- Fixtures for common test scenarios
-
-### Environment Variables for S3 Upload Test
-
-To run the S3 upload test in `test_deployment.py`, ensure the following environment variables are set:
-
-- `AWS_REGION`: The AWS region where your S3 bucket is located (e.g., `us-west-1`).
-- `S3_BUCKET_NAME`: The name of your S3 bucket (e.g., `crispvoice-audio-recordings`).
-- `COGNITO_IDENTITY_POOL_ID`: The Cognito Identity Pool ID used to fetch temporary AWS credentials.
-
-These environment variables are necessary for authenticating and interacting with AWS services during the test.
 
 ## Troubleshooting
 
