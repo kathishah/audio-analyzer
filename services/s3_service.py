@@ -38,17 +38,19 @@ def get_cognito_credentials(identity_pool_id: str) -> dict:
     except Exception as e:
         raise Exception(f"Failed to retrieve credentials from Cognito: {str(e)}")
 
-# Fetch temporary credentials
-cognito_credentials = get_cognito_credentials(COGNITO_IDENTITY_POOL_ID)
-
-# Configure AWS S3 client with temporary credentials
-s3_client = boto3.client(
-    's3',
-    region_name=AWS_REGION,
-    aws_access_key_id=cognito_credentials['AccessKeyId'],
-    aws_secret_access_key=cognito_credentials['SecretKey'],
-    aws_session_token=cognito_credentials['SessionToken']
-)
+# Initialize S3 client
+s3_client = None
+if AWS_REGION and BUCKET_NAME and COGNITO_IDENTITY_POOL_ID:
+    cognito_credentials = get_cognito_credentials(COGNITO_IDENTITY_POOL_ID)
+    s3_client = boto3.client(
+        's3',
+        region_name=AWS_REGION,
+        aws_access_key_id=cognito_credentials['AccessKeyId'],
+        aws_secret_access_key=cognito_credentials['SecretKey'],
+        aws_session_token=cognito_credentials['SessionToken']
+    )
+else:
+    logger.error("S3 client not initialized. Missing environment variables.")
 
 __all__ = ['s3_client', 'upload_file_to_s3']
 
@@ -81,6 +83,9 @@ def upload_file_to_s3(file_path: str, content_type: str) -> str:
     Raises:
         Exception: If the upload fails.
     """
+    if s3_client is None:
+        raise Exception("S3 client not initialized. Cannot upload file.")
+
     file_name = generate_file_name()
     try:
         with open(file_path, "rb") as f:

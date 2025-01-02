@@ -13,7 +13,16 @@ import requests
 import tempfile
 import numpy as np
 import soundfile as sf
-from services.s3_service import upload_file_to_s3, s3_client
+from services.s3_service import upload_file_to_s3
+
+s3_client = None
+if os.getenv('AWS_REGION') and os.getenv('S3_BUCKET_NAME') and os.getenv('COGNITO_IDENTITY_POOL_ID'):
+    from services.s3_service import s3_client
+
+@pytest.fixture(autouse=True)
+def skip_if_no_s3_env_vars():
+    if not (os.getenv('AWS_REGION') and os.getenv('S3_BUCKET_NAME') and os.getenv('COGNITO_IDENTITY_POOL_ID')):
+        pytest.skip("Skipping S3 tests because environment variables are not set.")
 
 def test_health_check(api_url):
     """Test health check endpoint"""
