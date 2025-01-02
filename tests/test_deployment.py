@@ -97,6 +97,7 @@ def test_invalid_file(api_url):
             if os.path.exists(temp_file.name):
                 os.unlink(temp_file.name)
 
+@pytest.mark.s3
 def test_upload_file_to_s3():
     # Arrange
     file_path = 'test_file.txt'

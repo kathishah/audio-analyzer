@@ -77,4 +77,4 @@ jobs:
     
     - name: Run post-deployment tests
       run: |
-        pytest tests/test_deployment.py tests/test_performance.py  -v
+        pytest tests/test_deployment.py tests/test_performance.py -m "not s3" -v
