@@ -9,13 +9,22 @@ services:
       - .:/app
     environment:
       - PORT=8000
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/audioanalyzer
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
+    depends_on:
+      - db
     
-  # Optional: Add database or other services here if needed
-  # For example:
-  # database:
-  #   image: postgres:13
-  #   environment:
-  #     POSTGRES_DB: audioanalyzerdb
-  #     POSTGRES_PASSWORD: yourpassword
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=audioanalyzer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import router
 from logging_config import setup_logging
+from api.init_db import init_db
 import logging
 import os
 
@@ -26,20 +27,23 @@ else:
     logger.error("No .env file found.")
 logger.info(f"COGNITO_IDENTITY_POOL_ID: {os.getenv('COGNITO_IDENTITY_POOL_ID')}")
 
-# Create FastAPI app
+# Initialize FastAPI app
 app = FastAPI(
-    title="Audio Quality Analyzer API",
-    description="API for analyzing audio quality using PESQ metrics",
-    version="0.1.0"
+    title="Audio Analyzer API",
+    description="API for analyzing audio quality",
+    version="1.0.0"
 )
+
+# Initialize database
+init_db()
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
