@@ -32,7 +32,12 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section)
     if "DATABASE_URL" in os.environ:
-        configuration["sqlalchemy.url"] = os.environ["DATABASE_URL"]
+        db_url = os.environ["DATABASE_URL"]
+        # Handle Heroku's postgres:// URLs
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        configuration["sqlalchemy.url"] = db_url
+        
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

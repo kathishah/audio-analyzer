@@ -9,7 +9,11 @@ logger = logging.getLogger(__name__)
 
 class DatabaseService:
     def __init__(self, database_url=None):
-        self.database_url = database_url or os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/audioanalyzer")
+        url = database_url or os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/audioanalyzer")
+        # Handle Heroku's postgres:// URLs
+        if url and url.startswith('postgres://'):
+            url = url.replace('postgres://', 'postgresql://', 1)
+        self.database_url = url
         self.engine = None
         self.SessionLocal = None
         self.Base = declarative_base()
