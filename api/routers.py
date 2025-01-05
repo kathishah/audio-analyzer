@@ -20,7 +20,7 @@ from .models import (
     RecordingSessionError,
     InvalidFormatError
 )
-from services.s3_service import upload_file_to_s3
+from services.s3_service import upload_file_to_s3, S3ClientManager
 from services.db_service import recording_session_crud
 from db.base import db_setup
 
@@ -48,7 +48,7 @@ def save_to_s3_in_background(temp_file_path: str, content_type: str):
         content_type: MIME type of the file.
     """
     try:
-        s3_url = upload_file_to_s3(temp_file_path, content_type)
+        s3_url = upload_file_to_s3(temp_file_path, content_type, max_retries=2)
         logger.info(f"File uploaded to S3: {s3_url}")
     except Exception as e:
         logger.error(f"Failed to upload file to S3: {str(e)}")
@@ -194,4 +194,100 @@ async def start_recording_session(
             status_code=500,
             detail="Internal server error occurred while creating recording session",
             headers={"X-Error-Code": "INTERNAL_ERROR"}
+        )
+
+
+@router.get("/s3-token/status", 
+          responses={
+              200: {"model": dict},
+              500: {"model": ErrorResponse}
+          })
+async def get_s3_token_status() -> Dict:
+    """
+    Get the current S3 token status.
+    
+    Returns:
+        dict: Token status containing:
+            - status: 'active' or 'expired'
+            - expires_in_seconds: seconds until expiration (if active)
+            - expiry_time: ISO formatted expiry time (if active)
+    """
+    if not S3ClientManager.is_initialized():
+        raise HTTPException(
+            status_code=500,
+            detail="S3 client is not initialized. Check if required environment variables are set.",
+            headers={"X-Error-Code": "S3_CLIENT_NOT_INITIALIZED"}
+        )
+        
+    try:
+        s3_manager = S3ClientManager.get_instance()
+        return s3_manager.get_token_status()
+    except Exception as e:
+        logger.error(f"Failed to get token status: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get token status: {str(e)}",
+            headers={"X-Error-Code": "TOKEN_STATUS_ERROR"}
+        )
+
+
+@router.post("/s3-token/refresh",
+           responses={
+               200: {"model": dict},
+               500: {"model": ErrorResponse}
+           })
+async def refresh_s3_token() -> Dict:
+    """
+    Force a refresh of the S3 token.
+    
+    Returns:
+        dict: New token status
+    """
+    if not S3ClientManager.is_initialized():
+        raise HTTPException(
+            status_code=500,
+            detail="S3 client is not initialized. Check if required environment variables are set.",
+            headers={"X-Error-Code": "S3_CLIENT_NOT_INITIALIZED"}
+        )
+        
+    try:
+        s3_manager = S3ClientManager.get_instance()
+        return s3_manager.force_refresh_token()
+    except Exception as e:
+        logger.error(f"Failed to refresh token: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to refresh token: {str(e)}",
+            headers={"X-Error-Code": "TOKEN_REFRESH_ERROR"}
+        )
+
+
+@router.post("/s3-token/expire",
+           responses={
+               200: {"model": dict},
+               500: {"model": ErrorResponse}
+           })
+async def expire_s3_token() -> Dict:
+    """
+    Force the current S3 token to expire.
+    
+    Returns:
+        dict: Token status after expiration
+    """
+    if not S3ClientManager.is_initialized():
+        raise HTTPException(
+            status_code=500,
+            detail="S3 client is not initialized. Check if required environment variables are set.",
+            headers={"X-Error-Code": "S3_CLIENT_NOT_INITIALIZED"}
+        )
+        
+    try:
+        s3_manager = S3ClientManager.get_instance()
+        return s3_manager.force_token_expiration()
+    except Exception as e:
+        logger.error(f"Failed to expire token: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to expire token: {str(e)}",
+            headers={"X-Error-Code": "TOKEN_EXPIRE_ERROR"}
         )

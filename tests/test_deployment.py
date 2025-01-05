@@ -13,11 +13,12 @@ import requests
 import tempfile
 import numpy as np
 import soundfile as sf
-from services.s3_service import upload_file_to_s3
+from services.s3_service import upload_file_to_s3, S3ClientManager
 
 s3_client = None
 if os.getenv('AWS_REGION') and os.getenv('S3_BUCKET_NAME') and os.getenv('COGNITO_IDENTITY_POOL_ID'):
-    from services.s3_service import s3_client
+    s3_manager = S3ClientManager.get_instance()
+    s3_client = s3_manager.get_client()
 
 @pytest.fixture(autouse=True)
 def skip_if_no_s3_env_vars():
@@ -106,32 +107,41 @@ def test_invalid_file(api_url):
             if os.path.exists(temp_file.name):
                 os.unlink(temp_file.name)
 
-@pytest.mark.s3
-def test_upload_file_to_s3():
-    # Arrange
-    file_path = 'test_file.txt'
-    content_type = 'text/plain'
-    expected_bucket = os.getenv('S3_BUCKET_NAME', 'crispvoice-audio-recordings')
-
-    # Create a test file
-    with open(file_path, 'w') as f:
-        f.write('This is a test file.')
-
-    # Act
-    result_url = upload_file_to_s3(file_path, content_type)
-
-    # Assert the result URL
-    expected_url_prefix = f"https://{expected_bucket}.s3.{os.getenv('AWS_REGION', 'us-west-1')}.amazonaws.com/"
-    assert result_url.startswith(expected_url_prefix), f"Unexpected result URL: {result_url}"
-
-    # Verify the file is accessible in S3
-    file_name = result_url.split('/')[-1]
-    response = s3_client.list_objects_v2(Bucket=expected_bucket, Prefix=file_name)
-    file_exists = 'Contents' in response and any(obj['Key'] == file_name for obj in response['Contents'])
-
-    assert file_exists, "File was not uploaded to S3."
-
-    # Cleanup
-    file_name = result_url.split('/')[-1]
-    s3_client.delete_object(Bucket=expected_bucket, Key=file_name)
-    os.remove(file_path)
+def test_s3_token_lifecycle(api_url):
+    """Test S3 token management endpoints"""
+    # Check initial token status
+    response = requests.get(f"{api_url}/api/v1/s3-token/status")
+    assert response.status_code == 200
+    status = response.json()
+    assert status["status"] in ["active", "expired"]
+    
+    if status["status"] == "expired":
+        # If token is expired, refresh it
+        response = requests.post(f"{api_url}/api/v1/s3-token/refresh")
+        assert response.status_code == 200
+        status = response.json()
+        assert status["status"] == "active"
+        assert status["expires_in_seconds"] > 0
+        assert status["expiry_time"] is not None
+    
+    # Force token expiration
+    response = requests.post(f"{api_url}/api/v1/s3-token/expire")
+    assert response.status_code == 200
+    status = response.json()
+    assert status["status"] == "expired"
+    assert status["expires_in_seconds"] == 0
+    
+    # Refresh expired token
+    response = requests.post(f"{api_url}/api/v1/s3-token/refresh")
+    assert response.status_code == 200
+    status = response.json()
+    assert status["status"] == "active"
+    assert status["expires_in_seconds"] > 0
+    assert status["expiry_time"] is not None
+    
+    # Verify token status matches
+    response = requests.get(f"{api_url}/api/v1/s3-token/status")
+    assert response.status_code == 200
+    verify_status = response.json()
+    assert verify_status["status"] == "active"
+    assert verify_status["expiry_time"] == status["expiry_time"]

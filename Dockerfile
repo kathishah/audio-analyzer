@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11.6-slim-bullseye
 
+# Set timezone environment variable
+ENV TZ=America/Los_Angeles
+
 # Set the working directory in the container
 WORKDIR /app
 
@@ -12,6 +15,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
     python3-dev \
+    tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the current directory contents into the container at /app
