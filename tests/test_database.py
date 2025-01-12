@@ -1,13 +1,17 @@
-import pytest
-from services.db_service import recording_session_crud
-from db.base import DatabaseSetup
-from api.models import RecordingSession, Base, StartRecordingSessionRequest, UpdateRecordingSessionRequest
-import json
-import uuid
-from datetime import datetime
+"""
+Database service tests
+"""
+
 import os
-from decimal import Decimal
 import time
+import uuid
+from decimal import Decimal
+import pytest
+from sqlalchemy.orm import Session
+
+from api.models import RecordingSession, Base
+from db.base import DatabaseSetup
+from services.db_service import recording_session_crud
 
 # Test database URL - use environment variable or default to localhost since we're running outside Docker
 TEST_DATABASE_URL = os.getenv(
@@ -34,72 +38,66 @@ def test_db():
 
 def test_create_recording_session(test_db):
     """Test creating a new recording session."""
-    session_request = StartRecordingSessionRequest(
+    session = RecordingSession(
         device_name="Test Device",
         ip_address="192.168.1.1",
         audio_format="wav"
     )
     
-    session = recording_session_crud.create(test_db, obj_in=session_request)
+    created_session = recording_session_crud.create(test_db, model_obj=session)
     
-    assert session.recording_session_id is not None
-    assert session.device_name == "Test Device"
-    assert session.ip_address == "192.168.1.1"
-    assert session.audio_format == "wav"
-    assert session.created_at is not None
-    assert session.updated_at is not None
+    assert created_session.recording_session_id is not None
+    assert created_session.device_name == "Test Device"
+    assert created_session.ip_address == "192.168.1.1"
+    assert created_session.audio_format == "wav"
+    assert created_session.created_at is not None
+    assert created_session.updated_at is not None
 
 def test_update_recording_session(test_db):
     """Test updating a recording session."""
     # Create initial session
-    initial_session = recording_session_crud.create(
-        test_db,
-        obj_in=StartRecordingSessionRequest(
-            device_name="Test Device",
-            ip_address="192.168.1.1",
-            audio_format="wav"
-        )
+    initial_session = RecordingSession(
+        device_name="Test Device",
+        ip_address="192.168.1.1",
+        audio_format="wav"
     )
+    initial_session = recording_session_crud.create(test_db, model_obj=initial_session)
     
     initial_updated_at = initial_session.updated_at
     time.sleep(0.1)  # Add a small delay to ensure timestamps are different
     
     # Update the session
-    update_request = UpdateRecordingSessionRequest(
-        recording_session_id=initial_session.recording_session_id,
-        analysis_score=Decimal('0.95'),
-        status="completed",
-        error_message=None
-    )
+    initial_session.analysis_score = Decimal('0.95')
+    initial_session.analysis_output = {
+        'pesq_score': 0.95,
+        'quality_category': 'good',
+        'snr_db': 25.5,
+        'sample_rate': 44100
+    }
+    initial_session.s3_location = 's3://bucket/test.wav'
     
-    updated_session = recording_session_crud.update(
-        test_db,
-        db_obj=initial_session,
-        obj_in=update_request
-    )
+    updated_session = recording_session_crud.update(test_db, model_obj=initial_session)
     
     assert updated_session.recording_session_id == initial_session.recording_session_id
     assert updated_session.analysis_score == Decimal('0.95')
-    assert updated_session.status == "completed"
-    assert updated_session.error_message is None
+    assert updated_session.analysis_output['pesq_score'] == 0.95
+    assert updated_session.s3_location == 's3://bucket/test.wav'
     assert updated_session.updated_at > initial_updated_at
 
 def test_retrieve_recording_session(test_db):
     """Test retrieving a recording session."""
     # Create a session
-    initial_session = recording_session_crud.create(
-        test_db,
-        obj_in=StartRecordingSessionRequest(
-            device_name="Test Device",
-            ip_address="192.168.1.1",
-            audio_format="wav"
-        )
+    initial_session = RecordingSession(
+        device_name="Test Device",
+        ip_address="192.168.1.1",
+        audio_format="wav"
     )
+    initial_session = recording_session_crud.create(test_db, model_obj=initial_session)
     
     # Retrieve the session
-    retrieved_session = recording_session_crud.get_by_recording_session_id(
+    retrieved_session = recording_session_crud.get_session(
         test_db,
-        recording_session_id=initial_session.recording_session_id
+        str(initial_session.recording_session_id)
     )
     
     assert retrieved_session is not None
@@ -107,3 +105,30 @@ def test_retrieve_recording_session(test_db):
     assert retrieved_session.device_name == initial_session.device_name
     assert retrieved_session.ip_address == initial_session.ip_address
     assert retrieved_session.audio_format == initial_session.audio_format
+
+def test_retrieve_nonexistent_session(test_db):
+    """Test retrieving a non-existent recording session."""
+    nonexistent_id = str(uuid.uuid4())
+    retrieved_session = recording_session_crud.get_session(test_db, nonexistent_id)
+    assert retrieved_session is None
+
+def test_delete_recording_session(test_db):
+    """Test deleting a recording session."""
+    # Create a session
+    session = RecordingSession(
+        device_name="Test Device",
+        ip_address="192.168.1.1",
+        audio_format="wav"
+    )
+    created_session = recording_session_crud.create(test_db, model_obj=session)
+    
+    # Delete the session
+    deleted_session = recording_session_crud.delete(test_db, id=created_session.recording_session_id)
+    assert deleted_session.recording_session_id == created_session.recording_session_id
+    
+    # Verify it's gone
+    retrieved_session = recording_session_crud.get_session(
+        test_db,
+        str(created_session.recording_session_id)
+    )
+    assert retrieved_session is None

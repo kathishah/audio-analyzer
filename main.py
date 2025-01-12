@@ -2,13 +2,13 @@
 Main application entry point
 """
 
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import os
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
 from db import init_database
 from api.routers import router

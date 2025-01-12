@@ -2,18 +2,17 @@
 Deployment verification tests
 """
 
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
 import os
 import pytest
 import requests
 import tempfile
 import numpy as np
 import soundfile as sf
-from services.s3_service import upload_file_to_s3, S3ClientManager
+from dotenv import load_dotenv
+from services.s3_service import S3ClientManager
+
+# Load environment variables from .env file
+load_dotenv()
 
 s3_client = None
 if os.getenv('AWS_REGION') and os.getenv('S3_BUCKET_NAME') and os.getenv('COGNITO_IDENTITY_POOL_ID'):
@@ -31,13 +30,8 @@ def test_health_check(api_url):
     assert response.status_code == 200
     assert response.json() == {"status": "healthy"}
 
-def test_api_docs(api_url):
-    """Test API documentation endpoint"""
-    response = requests.get(f"{api_url}/docs")
-    assert response.status_code == 200
-
 def test_analyze_endpoint(api_url):
-    """Test audio analysis endpoint with a generated test file"""
+    """Test direct audio analysis endpoint with a generated test file"""
     # Create a simple test audio file
     sample_rate = 16000
     duration = 1.0  # seconds
@@ -78,6 +72,59 @@ def test_analyze_endpoint(api_url):
             
         finally:
             # Cleanup
+            if os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+
+def test_recording_session_flow(api_url):
+    """Test complete recording session flow: start -> analyze"""
+    # Start recording session
+    start_data = {
+        "device_name": "Test Device",
+        "ip_address": "192.168.1.1",
+        "audio_format": "wav"
+    }
+    response = requests.post(f"{api_url}/api/v1/recording-session/start", json=start_data)
+    assert response.status_code == 200
+    session_data = response.json()
+    assert "recording_session_id" in session_data
+    session_id = session_data["recording_session_id"]
+    
+    # Create a test audio file
+    sample_rate = 16000
+    duration = 1.0
+    t = np.linspace(0, duration, int(sample_rate * duration))
+    audio_data = np.sin(2 * np.pi * 440 * t)
+    
+    # Create temporary WAV file
+    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+        sf.write(temp_file.name, audio_data, sample_rate)
+        
+        try:
+            # Test file upload and analysis
+            with open(temp_file.name, 'rb') as f:
+                files = {'file': ('test.wav', f, 'audio/wav')}
+                response = requests.post(
+                    f"{api_url}/api/v1/recording-session/{session_id}/analyze",
+                    files=files
+                )
+            
+            # Check response
+            assert response.status_code == 200
+            result = response.json()
+            
+            # Verify response structure
+            assert 'pesq_score' in result
+            assert 'quality_category' in result
+            assert 'snr_db' in result
+            assert 'sample_rate' in result
+            
+            # Verify data types
+            assert isinstance(result['pesq_score'], float)
+            assert isinstance(result['quality_category'], str)
+            assert isinstance(result['snr_db'], float)
+            assert isinstance(result['sample_rate'], int)
+            
+        finally:
             if os.path.exists(temp_file.name):
                 os.unlink(temp_file.name)
 

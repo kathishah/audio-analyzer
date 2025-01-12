@@ -3,66 +3,118 @@ Database service with CRUD operations
 """
 
 from typing import TypeVar, Type, Optional, Dict, Any, Generic
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import logging
 import uuid
 
 logger = logging.getLogger(__name__)
 
-# Generic type variables
+# Generic type variable
 ModelType = TypeVar("ModelType")
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
-class CRUDService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
+class CRUDService(Generic[ModelType]):
     """
     Generic CRUD operations service
     """
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
-    def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
-        """Create a new record"""
-        obj_data = obj_in.model_dump()
-        db_obj = self.model(**obj_data)
-        db.add(db_obj)
-        db.flush()
-        return db_obj
+    def create(self, db: Session, *, model_obj: ModelType) -> ModelType:
+        """
+        Create a new record
+        
+        Args:
+            db: Database session
+            model_obj: Model instance to create
+            
+        Returns:
+            ModelType: Created record
+        """
+        try:
+            db.add(model_obj)
+            db.flush()
+            db.commit()  # Commit the transaction
+            return model_obj
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to create record: {str(e)}")
+            raise
 
     def get(self, db: Session, id: Any) -> Optional[ModelType]:
-        """Get a record by ID"""
+        """
+        Get a record by ID
+        
+        Args:
+            db: Database session
+            id: Record ID
+            
+        Returns:
+            Optional[ModelType]: Found record or None
+        """
         return db.query(self.model).filter(self.model.id == id).first()
 
     def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> list[ModelType]:
-        """Get multiple records"""
+        """
+        Get multiple records
+        
+        Args:
+            db: Database session
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+            
+        Returns:
+            list[ModelType]: List of records
+        """
         return db.query(self.model).offset(skip).limit(limit).all()
 
-    def update(self, db: Session, *, db_obj: ModelType, obj_in: UpdateSchemaType) -> ModelType:
-        """Update a record"""
-        obj_data = obj_in.model_dump(exclude_unset=True)
-        for field, value in obj_data.items():
-            setattr(db_obj, field, value)
-        db.add(db_obj)
-        db.flush()
-        db.refresh(db_obj)  # Refresh to ensure we get the updated timestamp
-        return db_obj
+    def update(self, db: Session, *, model_obj: ModelType) -> ModelType:
+        """
+        Update a record
+        
+        Args:
+            db: Database session
+            model_obj: Model instance with updated values
+            
+        Returns:
+            ModelType: Updated record
+        """
+        try:
+            db.merge(model_obj)
+            db.flush()
+            db.commit()  # Commit the transaction
+            return model_obj
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to update record: {str(e)}")
+            raise
 
     def delete(self, db: Session, *, id: Any) -> ModelType:
-        """Delete a record"""
-        obj = db.query(self.model).get(id)
-        db.delete(obj)
-        db.flush()
-        return obj
+        """
+        Delete a record
+        
+        Args:
+            db: Database session
+            id: Record ID
+            
+        Returns:
+            ModelType: Deleted record
+        """
+        try:
+            obj = db.get(self.model, id)
+            db.delete(obj)
+            db.flush()
+            db.commit()  # Commit the transaction
+            return obj
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to delete record: {str(e)}")
+            raise
 
-class CRUDServiceRecordingSession(CRUDService[
-    'RecordingSession',
-    'StartRecordingSessionRequest',
-    'UpdateRecordingSessionRequest'
-]):
-    """CRUD operations for RecordingSession model"""
-    
-    def get_by_recording_session_id(self, db: Session, recording_session_id: Any) -> Optional['RecordingSession']:
+class CRUDServiceRecordingSession(CRUDService['RecordingSession']):
+    """
+    CRUD operations for RecordingSession model
+    """
+    def get_session(self, db: Session, recording_session_id: str) -> Optional['RecordingSession']:
         """
         Get a recording session by its ID
         
@@ -77,79 +129,19 @@ class CRUDServiceRecordingSession(CRUDService[
             ValueError: If recording_session_id is invalid
         """
         try:
-            if not isinstance(recording_session_id, uuid.UUID):
-                recording_session_id = uuid.UUID(str(recording_session_id))
-        except (TypeError, ValueError):
-            raise ValueError(f"Invalid recording session ID: {recording_session_id}")
-            
-        return db.query(self.model).filter(
-            self.model.recording_session_id == recording_session_id
-        ).first()
-    
-    def create(self, db: Session, *, obj_in: 'StartRecordingSessionRequest') -> 'RecordingSession':
-        """
-        Create a new recording session
-        
-        Args:
-            db: Database session
-            obj_in: Recording session data
-            
-        Returns:
-            RecordingSession: The created recording session
-            
-        Raises:
-            ValueError: If input data is invalid
-            sqlalchemy.exc.IntegrityError: If database constraints are violated
-        """
-        try:
-            return super().create(db, obj_in=obj_in)
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Failed to create recording session: {str(e)}")
-            if "duplicate key" in str(e).lower():
-                raise ValueError("A recording session with this ID already exists")
-            raise
-    
-    def update(
-        self, 
-        db: Session, 
-        *, 
-        db_obj: 'RecordingSession', 
-        obj_in: 'UpdateRecordingSessionRequest'
-    ) -> 'RecordingSession':
-        """
-        Update a recording session
-        
-        Args:
-            db: Database session
-            db_obj: Existing recording session
-            obj_in: Update data
-            
-        Returns:
-            RecordingSession: The updated recording session
-            
-        Raises:
-            ValueError: If input data is invalid
-            sqlalchemy.exc.IntegrityError: If database constraints are violated
-        """
-        if db_obj.recording_session_id != obj_in.recording_session_id:
-            raise ValueError("Recording session ID mismatch")
-            
-        try:
-            return super().update(db, db_obj=db_obj, obj_in=obj_in)
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Failed to update recording session: {str(e)}")
-            raise
+            # Validate UUID format
+            session_uuid = uuid.UUID(recording_session_id)
+            return db.query(RecordingSession).filter(
+                RecordingSession.recording_session_id == str(session_uuid)
+            ).first()
+        except ValueError as e:
+            logger.error(f"Invalid recording session ID format: {str(e)}")
+            raise ValueError("Invalid recording session ID format") from e
 
 # Import models after CRUDService definition to avoid circular imports
-from api.models import RecordingSession, StartRecordingSessionRequest, UpdateRecordingSessionRequest
+from api.models import RecordingSession
 
 # Create CRUD service instance
 recording_session_crud = CRUDServiceRecordingSession(RecordingSession)
 
-__all__ = [
-    'CRUDService',
-    'CRUDServiceRecordingSession',
-    'recording_session_crud'
-]
+__all__ = ['recording_session_crud']
