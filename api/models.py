@@ -33,13 +33,17 @@ class ErrorResponse(BaseModel):
 class StartRecordingSessionRequest(BaseModel):
     device_name: constr(min_length=1, max_length=255)
     ip_address: str
-    audio_format: str
+    audio_format: Optional[str] = None
+    microphone_details: Optional[str] = None
+    speaker_details: Optional[str] = None
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "device_name": "iPhone 12",
             "ip_address": "192.168.1.100",
-            "audio_format": "wav"
+            "audio_format": "wav",
+            "microphone_details": "Built-in Microphone",
+            "speaker_details": "Built-in Speaker"
         }
     })
 
@@ -50,13 +54,6 @@ class StartRecordingSessionRequest(BaseModel):
             return v
         except ValueError:
             raise ValueError('Invalid IP address format')
-
-    @field_validator('audio_format')
-    def validate_audio_format(cls, v):
-        valid_formats = {'wav', 'mp3', 'aac', 'ogg', 'webm'}
-        if v.lower() not in valid_formats:
-            raise InvalidFormatError(f'Unsupported audio format. Must be one of: {", ".join(valid_formats)}')
-        return v.lower()
 
 class RecordingSessionResponse(BaseModel):
     recording_session_id: uuid.UUID

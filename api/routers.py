@@ -272,6 +272,7 @@ async def start_recording_session(
             - 409: If a conflict occurs (e.g., duplicate session)
             - 500: For other server errors
     """
+    logger.info("Starting new recording session with request: %s", request)
     try:
         # Create SQLAlchemy model instance from Pydantic model
         db_model = RecordingSession(
